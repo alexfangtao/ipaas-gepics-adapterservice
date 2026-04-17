@@ -11,17 +11,25 @@ public class Route01 extends RouteBuilder {
 
         //gepics01-接口编号，XXX-业务描述
         from("rest:get:gepics01/XXX").setProperty("SVCNO",  constant("gepics01"))
-                .process(p->{
-                    //根据实际场景确定传递的值
-                    p.setProperty("X-TRACE-ID", "123123123");
+                .process(exchange -> {
                     //如果通过网关暴露接口，可从请求头中获取client_id设置为from按照client_id:xxx拼接,保存日志时会从ITAM系统获取应用的英文短名称
-                    //from = "client_id:6Y5T9tFeRRVqNNf9l7BebRa9pLv2P7LX6CMfh4q6QxA2Q1zepqKSp4Wathz"
-                    p.setProperty("from", "client_id:6Y5T9tFeRRVqNNf9l7BebRa9pLv2P7LX6CMfh4q6QxA2Q1zepqKSp4Wathz");
+                    //样例 from = "client_id:6Y5T9tFeRRVqNNf9l7BebRa9pLv2P7LX6CMfh4q6QxA2Q1zepqKSp4Wathz"
+                    String clientId = exchange.getIn().getHeader("client_id", String.class);
+                    if (clientId != null && !clientId.isEmpty()) {
+                        exchange.setProperty("X-FROM", "client_id:" + clientId);
+                    }
+
+                    // 如果通过网关暴露接口，也可从请求头中获取trace_id，保证链路追踪闭环
+                    String traceId = exchange.getIn().getHeader("trace_id", String.class);
+                    if (traceId != null && !traceId.isEmpty()) {
+                        exchange.setProperty("X-TRACE-ID", traceId);
+                    }
                 })
-                .toD("logger:RestRequest?code=code1&from=${exchangeProperty.from}&to=toT&traceId=${exchangeProperty.X-TRACE-ID}")
+
+
+                .toD("logger:RestRequest?code=code1&from=${exchangeProperty.X-FROM}&to=toT&traceId=${exchangeProperty.X-TRACE-ID}")
                 .removeHeader(Exchange.HTTP_URI)
-                .toD("logger:CallHttp?code=code2&from=ipaas-gepics-adapterService&to=toT&traceId=${exchangeProperty.X-TRACE-ID}")
-                .to("http://localhost:8086/api/gepics02/XXX")
+                .toD("{{api.gepics02.url}}")
                 .end();
     }
 }
