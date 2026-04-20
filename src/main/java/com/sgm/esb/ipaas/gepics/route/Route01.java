@@ -27,9 +27,9 @@ public class Route01 extends RouteBuilder {
                 })
 
 
-                .toD("logger:RestRequest?code=code1&from=${exchangeProperty.X-FROM}&to=toT&traceId=${exchangeProperty.X-TRACE-ID}")
+                .toD("logger:RestRequest?code=code1&from=${exchangeProperty.X-FROM}&to=toT")
                 .removeHeader(Exchange.HTTP_URI)
-                .toD("{{api.gepics02.url}}")
+                .to("{{api.gepics02.url}}")
                 .end();
     }
 }
