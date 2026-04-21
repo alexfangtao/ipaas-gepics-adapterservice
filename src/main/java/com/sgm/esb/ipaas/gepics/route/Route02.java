@@ -11,7 +11,7 @@ public class Route02 extends RouteBuilder {
 
         //gepics02-接口编号，XXX-业务描述
         from("rest:get:gepics02/XXX")
-                // 使用 Camel 原生异步延迟代替 Thread.sleep 阻塞线程
+                // 优化：使用 Camel 原生异步延迟代替 Thread.sleep 阻塞线程
                 .delay(20).asyncDelayed()
                 .setBody(simple("{\"status\":\"UP\"}"))
                 .end();
