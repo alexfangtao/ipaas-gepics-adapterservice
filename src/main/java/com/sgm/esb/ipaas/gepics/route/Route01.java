@@ -9,7 +9,8 @@ public class Route01 extends RouteBuilder {
     public void configure() throws Exception {
 
         //gepics01-接口编号，XXX-业务描述
-        from("rest:get:gepics01/XXX").setProperty("SVCNO",  constant("gepics01")).streamCache(true)
+        from("rest:get:gepics01/XXX").setProperty("SVCNO",  constant("gepics01"))
+                .doTry()
                 .process(exchange -> {
                     //如果通过网关暴露接口，可从请求头中获取client_id设置为from按照client_id:xxx拼接,保存日志时会从ITAM系统获取应用的英文短名称
                     //样例 from = "client_id:6Y5T9tFeRRVqNNf9l7BebRa9pLv2P7LX6CMfh4q6QxA2Q1zepqKSp4Wathz"
@@ -24,11 +25,16 @@ public class Route01 extends RouteBuilder {
                         exchange.setProperty("X-TRACE-ID", traceId);
                     }
                 })
-
-
-                .toD("logger:RestRequest?code=code1&from=${exchangeProperty.X-FROM}&to=toT")
+                .toD("ipaas-logger:RestRequest?code=code1&from=${exchangeProperty.X-FROM}&to=toT")
                 .removeHeaders("CamelHttp*")
                 .to("{{api.gepics02.url}}")
+                .doCatch(Exception.class)
+                //全局捕获异常，异常响应及9100日志记录根据业务实际需要调整组装。
+                .log("Caught: ${exception.message}")
+                .toD("ipaas-logger:exception?code=code9&from=${exchangeProperty.X-FROM}&to=toT")
+                .setHeader("CamelHttpResponseCode", constant(500))
+                .setBody().simple("{\"error\": \"${exception.message}\"}")
+                .end()
                 .end();
     }
 }

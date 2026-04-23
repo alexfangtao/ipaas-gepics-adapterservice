@@ -66,11 +66,11 @@ public class Route01 extends RouteBuilder {
 | `camel.component.http.connection-request-timeout` | 10000ms | 从连接池获取连接的超时时间 |
 
 ### 3.2 数据库连接池配置 (Hikari)
-| 配置 Key                       | 默认/设定值 | 描述                      |
-|--------------------------------|------------|---------------------------|
-| `spring.datasource.hikari.maximum-pool-size` | 10         | 最大连接数            |
-| `spring.datasource.hikari.minimum-idle`     | 1          | 最小空闲连接数        |
-| `spring.datasource.hikari.connection-timeout` | 30000ms    | 等待连接分配的超时时间 |
+| 配置 Key                       | 默认/设定值  | 描述                      |
+|--------------------------------|---------|---------------------------|
+| `spring.datasource.hikari.maximum-pool-size` | 10      | 最大连接数            |
+| `spring.datasource.hikari.minimum-idle`     | -1      | 最小空闲连接数        |
+| `spring.datasource.hikari.connection-timeout` | 30000ms | 等待连接分配的超时时间 |
 
 ### 3.3 RocketMQ 生产者配置
 | 配置 Key                        | 默认/设定值 | 描述                      |
@@ -80,11 +80,18 @@ public class Route01 extends RouteBuilder {
 | `rocketmq.producer.max-message-size`      | 4194304 (4MB) | 单条消息最大大小      |
 
 ### 3.4 日志服务配置
-| 配置 Key                | 默认/设定值       | 描述                          |
-|-------------------------|------------------|-------------------------------|
+| 配置 Key                | 默认/设定值                              | 描述              |
+|-------------------------|-------------------------------------|-----------------|
 | `ipaas.logger.httpPath`  | `http://127.0.0.1:8186/api/saveLog` | **必填**：日志保存接口地址 |
-| `ipaas.logger.poolSize`  | 20               | 日志处理线程池大小             |
-| `ipaas.logger.connectTimeout` | 1000ms         | 日志服务连接超时时间          |
+| `ipaas.logger.poolSize`  | 20                                  | 日志处理线程池大小       |
+| `ipaas.logger.connectTimeout` | 1000ms                              | 日志服务连接超时时间      |
+| `ipaas.logger.maxPoolSize` | 20                                  | 日志处理线程池最大线程数    |
+| `ipaas.logger.maxQueueSize` | 2000                                | 日志保存线程池最大队列      |
+| `ipaas.logger.maxTotalConnections` | 200                                 | 日志保存http客户端最大连接数      |
+| `ipaas.logger.connectionsPerRoute` | 20                                  | 日志保存http客户端单个域名连接数      |
+| `ipaas.logger.policy` | 3                                   | 日志组件线程池拒绝策略配置（1：Abort 2：Discard 3：DiscardOldest 4：CallerRuns）      |
+| `ipaas.logger.responseTimeout` | 1000ms                              | 日志服务响应超时时间      |
+| `ipaas.logger.limitSize` | 3145728                              | 日志body字段压缩字符数配置      |
 
 ### 3.5 下游系统配置
 - **下游地址 (`api.gepics02.url`)**: `http://localhost:8086/gepics02/XXX`
