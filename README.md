@@ -28,29 +28,36 @@
 @Component
 public class Route01 extends RouteBuilder {
     @Override
-    public void configure() throws Exception {
-        // 1. 定义入口与业务编号
-        from("rest:get:gepics01/XXX")
-            .setProperty("SVCNO", constant("gepics01"))
-            
-            // 2. 网关参数处理逻辑
-            .process(exchange -> {
-                String clientId = exchange.getIn().getHeader("client_id", String.class);
-                if (clientId != null) {
-                    exchange.setProperty("X-FROM", "client_id:" + clientId);
-                }
-                
-                String traceId = exchange.getIn().getHeader("trace_id", String.class);
-                if (traceId != null) {
-                    exchange.setProperty("X-TRACE-ID", traceId);
-                }
-            })
-            
-            // 3. 日志上报与下游转发
-            .toD("logger:RestRequest?code=code1&from=${exchangeProperty.X-FROM}&to=toT&traceId=${exchangeProperty.X-TRACE-ID}")
-            .removeHeader(Exchange.HTTP_URI)
-            .to("{{api.gepics02.url}}") // 动态占位符引用配置
-            .end();
+    public void configure() throws Exception {{
+
+        //gepics01-接口编号，XXX-业务描述
+        from("rest:get:gepics01/XXX").setProperty(LogConstant.svcNo,  constant("gepics01"))
+                .doTry()
+                .process(exchange -> {
+                    //如果通过网关暴露接口，可从请求头中获取client_id设置为from按照client_id:xxx拼接,保存日志时会从ITAM系统获取应用的英文短名称
+                    //样例 from = "client_id:6Y5T9tFeRRVqNNf9l7BebRa9pLv2P7LX6CMfh4q6QxA2Q1zepqKSp4Wathz"
+                    String clientId = exchange.getIn().getHeader("client_id", String.class);
+                    if (clientId != null && !clientId.isEmpty()) {
+                        exchange.setProperty("X-FROM", "client_id:" + clientId);
+                    }
+
+                    // 如果通过网关暴露接口，也可从请求头中获取trace_id，保证链路追踪闭环
+                    String traceId = exchange.getIn().getHeader("trace_id", String.class);
+                    if (traceId != null && !traceId.isEmpty()) {
+                        exchange.setProperty(LogConstant.traceId, traceId);
+                    }
+                })
+                .toD("ipaas-logger:RestRequest?code=code1&fromApp=${exchangeProperty.X-FROM}&toApp=toT")
+                .removeHeaders("CamelHttp*")
+                .to("{{api.gepics02.url}}")
+                .doCatch(Exception.class)
+                //全局捕获异常，异常响应及9100日志记录根据业务实际需要调整组装。
+                .log("Caught: ${exception.message}")
+                .toD("ipaas-logger:exception?code=code9&fromApp=${exchangeProperty.X-FROM}&toApp=toT")
+                .setHeader("CamelHttpResponseCode", constant(500))
+                .setBody().simple("{\"error\": \"${exception.message}\"}")
+                .end()
+                .end();
     }
 }
 ```
@@ -91,7 +98,8 @@ public class Route01 extends RouteBuilder {
 | `ipaas.logger.connectionsPerRoute` | 20                                  | 日志保存http客户端单个域名连接数      |
 | `ipaas.logger.policy` | 3                                   | 日志组件线程池拒绝策略配置（1：Abort 2：Discard 3：DiscardOldest 4：CallerRuns）      |
 | `ipaas.logger.responseTimeout` | 1000ms                              | 日志服务响应超时时间      |
-| `ipaas.logger.limitSize` | 3145728                              | 日志body字段压缩字符数配置      |
+| `ipaas.logger.limitSize` | 1048576                              | 日志body字段压缩字符数配置      |
+| `ipaas.logger.forceMemoryOnlyStreamCaching` | true                              | streamcache是否强制使用纯内存，默认true，如果为false则使用磁盘缓存，需要根据报文大小及并发数评估磁盘所需的空间      |
 
 ### 3.5 下游系统配置
 - **下游地址 (`api.gepics02.url`)**: `http://localhost:8086/gepics02/XXX`
